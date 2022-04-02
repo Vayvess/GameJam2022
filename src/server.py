@@ -12,6 +12,7 @@ tcp_sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
 tcp_sock.bind(SRV_ADDR)
 tcp_sock.listen()
 gameobjects = []
+lock = threading.Lock()
 
 tcp_sock.setblocking(False)
 sel = selectors.DefaultSelector()
@@ -61,7 +62,8 @@ class Session:
     def get_state(self):
         return {
             UDP_TYPE: UDP_PLAYER,
-            UDP_POS: (self.x, self.y)
+            UDP_POS: (self.x, self.y),
+            UDP_USERN: self.usern
         }
 
     def update(self, dt):
@@ -77,7 +79,7 @@ class Session:
 
 def gameloop():
     weights = {
-        UDP_PLAYER: 35
+        UDP_PLAYER: 60
     }
 
     def broadcast_state(gs):
@@ -90,6 +92,7 @@ def gameloop():
 
     while True:
         if gameobjects:
+            lock.acquire()
             dt = clk.tick(60)
             w = 0
             game_state = {}
@@ -102,6 +105,7 @@ def gameloop():
                 game_state[go.id] = go.get_state()
                 w += weights[go.type]
             broadcast_state(game_state)
+            lock.release()
         else:
             time.sleep(2)
 
@@ -123,8 +127,10 @@ def tcp_handler():
                         sess.handle_req(json.loads(data.decode("utf-8")))
                     else:
                         print("bye !")
+                        lock.acquire()
                         if sess in gameobjects:
                             gameobjects.remove(sess)
+                        lock.release()
                         sel.unregister(sess.conn)
                         sess.conn.close()
     except KeyboardInterrupt:

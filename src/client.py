@@ -192,10 +192,13 @@ class Arena(Scene):
                     for k in data:
                         self.uptimes[k] = now
                         self.gameobjects[k] = data[k]
+                    to_remove = []
                     for k in self.uptimes:
                         if now - self.uptimes[k] > 1.5:
-                            self.uptimes.pop(k)
-                            self.gameobjects.pop(k)
+                            to_remove.append(k)
+                    for k in to_remove:
+                        self.uptimes.pop(k)
+                        self.gameobjects.pop(k)
                     self.lock.release()
             except OSError:
                 pass
@@ -209,6 +212,9 @@ class Arena(Scene):
         for k, v in self.gameobjects.items():
             if v[UDP_TYPE] == UDP_PLAYER:
                 pg.draw.circle(window, BLUE if int(k) == game_id else RED, v[UDP_POS], 16)
+                pos = v[UDP_POS]
+                pos = (pos[0] - len(v[UDP_USERN]) * 6, pos[1] - 40)
+                window.blit(font.render(v[UDP_USERN], True, GREY), pos)
         self.lock.release()
 
         for r in self.renderable:
