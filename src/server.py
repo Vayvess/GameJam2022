@@ -2,10 +2,12 @@ import time
 import socket
 import selectors
 import threading
-
-from const import *
+import pygame as pg
 from proto import *
 
+pg.init()
+clk = pg.time.Clock()
+udp_sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
 tcp_sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
 tcp_sock.bind(SRV_ADDR)
 tcp_sock.listen()
@@ -14,14 +16,23 @@ gameobjects = []
 tcp_sock.setblocking(False)
 sel = selectors.DefaultSelector()
 sel.register(tcp_sock, selectors.EVENT_READ, None)
+game_id = 0
 
 
 class Session:
     def __init__(self, conn, addr):
+        global game_id
+        self.id = game_id
+        self.type = UDP_PLAYER
+        game_id += 1
         self.conn = conn
         self.addr = addr
-
-
+        self.inputs = {
+            TCP_UP: False,
+            TCP_DOWN: False,
+            TCP_LEFT: False,
+            TCP_RIGHT: False,
+        }
 
         self.lp = 100
         self.mp = 100
@@ -35,9 +46,14 @@ class Session:
         gameobjects.append(self)
 
     def handle_req(self, req):
+        print(req)
         req_type = req[TCP_REQ]
+        print("req type:", req_type)
         if req_type == TCP_PLAY:
             self.handle_play_req(req)
+        elif req_type == TCP_INPUT:
+            print("here")
+            self.inputs = req
 
     def reset(self):
         self.lp = 100
@@ -45,15 +61,50 @@ class Session:
         self.x = 400
         self.y = 300
 
-    def update(self):
-        pass
+    def get_state(self):
+        return {
+            UDP_TYPE: UDP_PLAYER,
+            UDP_POS: (self.x, self.y)
+        }
+
+    def update(self, dt):
+        if self.inputs[TCP_RIGHT]:
+            self.x = self.x + 0.2 * dt
+        if self.inputs[TCP_LEFT]:
+            self.x = self.x - 0.2 * dt
+        if self.inputs[TCP_UP]:
+            self.y = self.y - 0.2 * dt
+        if self.inputs[TCP_DOWN]:
+            self.y = self.y + 0.2 * dt
 
 
 def gameloop():
+    weights = {
+        UDP_PLAYER: 35
+    }
+
+    def broadcast_state(gs):
+        data = json.dumps(gs).encode("utf-8")
+        if len(data) > MTU:
+            print("wtf")
+        for obj in gameobjects:
+            if obj.type == UDP_PLAYER:
+                udp_sock.sendto(data, obj.addr)
+
     while True:
         if gameobjects:
+            dt = clk.tick(60)
+            w = 0
+            game_state = {}
             for go in gameobjects:
-                go.update()
+                go.update(dt)
+                if w + weights[go.type] > MTU:
+                    broadcast_state(game_state)
+                    game_state = {}
+                    w = 0
+                game_state[go.id] = go.get_state()
+                w += weights[go.type]
+            broadcast_state(game_state)
         else:
             time.sleep(2)
 
@@ -67,12 +118,15 @@ def tcp_handler():
                     conn, addr = tcp_sock.accept()
                     conn.setblocking(False)
                     sel.register(conn, selectors.EVENT_READ, Session(conn, addr))
+                    print("new connection")
                 else:
                     sess = key.data
                     data = sess.conn.recv(MTU)
                     if data:
+                        print("got request")
                         sess.handle_req(json.loads(data.decode("utf-8")))
                     else:
+                        print("bye !")
                         if sess in gameobjects:
                             gameobjects.remove(sess)
                         sel.unregister(sess.conn)
@@ -81,7 +135,7 @@ def tcp_handler():
         print("Server down !")
 
 
-threading.Thread(target=gameloop(), daemon=True).start()
+threading.Thread(target=gameloop, daemon=True).start()
 tcp_handler()
 sel.close()
 tcp_sock.close()

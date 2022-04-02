@@ -1,4 +1,6 @@
 import sys
+import threading
+import time
 import socket
 import pygame as pg
 from const import *
@@ -176,11 +178,55 @@ class Scene:
 class Arena(Scene):
     def __init__(self):
         super().__init__()
+        self.uptimes = {}
+        self.gameobjects = {}
+
+        def sub_routine():
+            while 1:
+                data = json.loads(udp_sock.recv(MTU).decode("utf-8"))
+                now = time.time()
+                for k in data:
+                    self.uptimes[k] = now
+                    self.gameobjects[k] = data[k]
+                for k in self.uptimes:
+                    if now - self.uptimes[k] > 1.5:
+                        self.uptimes.pop(k)
+                        self.gameobjects.pop(k)
+        threading.Thread(target=sub_routine, daemon=True).start()
+
+    def handle_render(self):
+        window.fill(BLACK)
+        # TODO: LOCAL BACKGROUND
+        # TODO: ANIMATE REMOTE OBJ
+        for obj in self.gameobjects.values():
+            if obj[UDP_TYPE] == UDP_PLAYER:
+                pg.draw.circle(window, BLUE, obj[UDP_POS], 16)
+
+        for r in self.renderable:
+            r.render(window)
+        pg.display.flip()
 
     def update(self):
         clock.tick(60)
+        to_send = False
         for ev in pg.event.get():
-            pass
+            if ev.type == pg.KEYDOWN or ev.type == pg.KEYUP:
+                to_send = True
+            elif ev.type == pg.QUIT:
+                tcp_sock.close()
+                udp_sock.close()
+                pg.quit()
+                sys.exit()
+        if to_send:
+            inputs = pg.key.get_pressed()
+            send_tcp_msg(tcp_sock, {
+                TCP_REQ: TCP_INPUT,
+                TCP_UP: inputs[pg.K_z],
+                TCP_DOWN: inputs[pg.K_s],
+                TCP_LEFT: inputs[pg.K_q],
+                TCP_RIGHT: inputs[pg.K_d],
+            })
+        self.handle_render()
 
 
 class Menu(Scene):

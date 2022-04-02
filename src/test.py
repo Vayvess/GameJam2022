@@ -1,4 +1,5 @@
 import sys
+import time
 import pygame as pg
 from const import *
 
@@ -11,7 +12,6 @@ fps = 60
 dt = 1 / fps
 
 x = 0
-new_input = False
 while True:
     for ev in pg.event.get():
         if ev.type == pg.QUIT:
@@ -30,7 +30,6 @@ while True:
             TCP_LEFT: inputs[pg.K_q],
             TCP_RIGHT: inputs[pg.K_d],
         }
-        print(data, x)
         new_input = False
 
     dt = clock.tick(fps)
