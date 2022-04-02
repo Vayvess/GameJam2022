@@ -6,6 +6,7 @@ import pygame as pg
 from const import *
 from proto import *
 
+game_id = 0
 tcp_sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
 try:
     tcp_sock.connect(SRV_ADDR)
@@ -180,27 +181,35 @@ class Arena(Scene):
         super().__init__()
         self.uptimes = {}
         self.gameobjects = {}
+        self.lock = threading.Lock()
 
         def sub_routine():
-            while 1:
-                data = json.loads(udp_sock.recv(MTU).decode("utf-8"))
-                now = time.time()
-                for k in data:
-                    self.uptimes[k] = now
-                    self.gameobjects[k] = data[k]
-                for k in self.uptimes:
-                    if now - self.uptimes[k] > 1.5:
-                        self.uptimes.pop(k)
-                        self.gameobjects.pop(k)
+            try:
+                while 1:
+                    data = json.loads(udp_sock.recv(MTU).decode("utf-8"))
+                    now = time.time()
+                    self.lock.acquire()
+                    for k in data:
+                        self.uptimes[k] = now
+                        self.gameobjects[k] = data[k]
+                    for k in self.uptimes:
+                        if now - self.uptimes[k] > 1.5:
+                            self.uptimes.pop(k)
+                            self.gameobjects.pop(k)
+                    self.lock.release()
+            except OSError:
+                pass
         threading.Thread(target=sub_routine, daemon=True).start()
 
     def handle_render(self):
         window.fill(BLACK)
         # TODO: LOCAL BACKGROUND
         # TODO: ANIMATE REMOTE OBJ
-        for obj in self.gameobjects.values():
-            if obj[UDP_TYPE] == UDP_PLAYER:
-                pg.draw.circle(window, BLUE, obj[UDP_POS], 16)
+        self.lock.acquire()
+        for k, v in self.gameobjects.items():
+            if v[UDP_TYPE] == UDP_PLAYER:
+                pg.draw.circle(window, BLUE if int(k) == game_id else RED, v[UDP_POS], 16)
+        self.lock.release()
 
         for r in self.renderable:
             r.render(window)
@@ -236,8 +245,9 @@ class Menu(Scene):
 
         def req_play():
             def ans_play(ans):
-                if ans:
-                    self.next = Arena()
+                global game_id
+                game_id = ans
+                self.next = Arena()
 
             req_srv({
                 TCP_REQ: TCP_PLAY,

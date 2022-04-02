@@ -41,18 +41,15 @@ class Session:
         self.usern = "anon"
 
     def handle_play_req(self, req):
-        send_tcp_msg(self.conn, True)
+        send_tcp_msg(self.conn, self.id)
         self.usern = req[TCP_USERN]
         gameobjects.append(self)
 
     def handle_req(self, req):
-        print(req)
         req_type = req[TCP_REQ]
-        print("req type:", req_type)
         if req_type == TCP_PLAY:
             self.handle_play_req(req)
         elif req_type == TCP_INPUT:
-            print("here")
             self.inputs = req
 
     def reset(self):
@@ -123,7 +120,6 @@ def tcp_handler():
                     sess = key.data
                     data = sess.conn.recv(MTU)
                     if data:
-                        print("got request")
                         sess.handle_req(json.loads(data.decode("utf-8")))
                     else:
                         print("bye !")

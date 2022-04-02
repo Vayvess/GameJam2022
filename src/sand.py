@@ -1,9 +1,7 @@
 import json
 from const import *
 
-data = {
-    UDP_TYPE: UDP_PLAYER,
-    UDP_POS: (500, 325)
-}
-
-print(len(json.dumps(data).encode("utf-8")))
+data = 5
+u = json.dumps(data).encode("utf-8")
+v = json.loads(u.decode("utf-8"))
+print(type(v))
