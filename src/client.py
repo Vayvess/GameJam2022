@@ -13,6 +13,7 @@ except ConnectionRefusedError as err:
     sys.exit()
 udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 udp_sock.bind(tcp_sock.getsockname())
+udp_sock.setblocking(False)
 
 
 def req_srv(req, call_back):
@@ -182,35 +183,31 @@ class Arena(Scene):
         super().__init__()
         self.uptimes = {}
         self.gameobjects = {}
-        self.lock = threading.Lock()
         self.pos = (400, 300)
 
-        def sub_routine():
-            try:
-                while 1:
-                    data = json.loads(udp_sock.recv(MTU).decode("utf-8"))
-                    now = time.time()
-                    self.lock.acquire()
-                    for k in data:
-                        self.uptimes[k] = now
-                        self.gameobjects[k] = data[k]
-                    to_remove = []
-                    for k in self.uptimes:
-                        if now - self.uptimes[k] > 0.75:
-                            to_remove.append(k)
-                    for k in to_remove:
-                        self.uptimes.pop(k)
-                        self.gameobjects.pop(k)
-                    self.lock.release()
-            except OSError:
-                pass
-        threading.Thread(target=sub_routine, daemon=True).start()
+    def update_state(self):
+        try:
+            data = json.loads(udp_sock.recv(MTU).decode("utf-8"))
+            now = time.time()
+            for k in data:
+                self.uptimes[k] = now
+                self.gameobjects[k] = data[k]
+
+            to_remove = []
+            for k in self.uptimes:
+                if now - self.uptimes[k] > 0.75:
+                    to_remove.append(k)
+            for k in to_remove:
+                self.uptimes.pop(k)
+                self.gameobjects.pop(k)
+        except socket.error:
+            pass
 
     def handle_render(self):
+        self.update_state()
         window.fill(BLACK)
         window.blit(bg, (-self.pos[0], -self.pos[1]))
-        # TODO: ANIMATE REMOTE OBJ
-        self.lock.acquire()
+
         for k, v in self.gameobjects.items():
             if v[UDP_TYPE] == UDP_PLAYER:
                 if int(k) == game_id:
@@ -243,14 +240,12 @@ class Arena(Scene):
                 pos = (pos[0] - self.pos[0] + 400, pos[1] - self.pos[1] + 300)
                 window.blit(bot, pos)
 
-        self.lock.release()
-
         for r in self.renderable:
             r.render(window)
         pg.display.flip()
 
     def update(self):
-        clock.tick(60)
+        clock.tick(FPS)
         to_send = False
         for ev in pg.event.get():
             if ev.type == pg.KEYDOWN or ev.type == pg.KEYUP:

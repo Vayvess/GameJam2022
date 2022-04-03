@@ -1,10 +1,14 @@
 import json
 from const import *
 
-data = {
-    UDP_TYPE: UDP_PLAYER,
-    UDP_POS: (500, 325),
-    "2": "Barghest"
-}
+import socket
 
-print(len(json.dumps(data).encode("utf-8")))
+udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+udp_sock.setblocking(False)
+udp_sock.bind(("localhost", 60002))
+
+while True:
+    try:
+        print(udp_sock.recv(1024))
+    except socket.error as err:
+        print(err)
