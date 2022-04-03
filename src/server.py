@@ -14,6 +14,9 @@ with open(os.path.join("../ressources/arena.csv")) as f:
     for row in fbuff:
         colls.append([tile != "0" for tile in row])
 
+ch = len(colls)
+cw = len(colls[0])
+
 clk = pg.time.Clock()
 udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -92,19 +95,27 @@ class Bot:
             self.d = randint(0, 3)
         if self.d == 0:
             tmp_x = self.x + 0.2 * dt
-            if colls[int((self.y + 332) // 64)][int((tmp_x + 432) // 64)]:
+            i = int((self.y + 332) // 64)
+            j = int((tmp_x + 432) // 64)
+            if 0 <= i < ch and 0 <= j < cw and colls[i][j]:
                 self.x = tmp_x
         elif self.d == 1:
             tmp_x = self.x - 0.2 * dt
-            if colls[int((self.y + 332)) // 64][int((tmp_x + 432) // 64)]:
+            i = int((self.y + 332)) // 64
+            j = int((tmp_x + 432) // 64)
+            if 0 <= i < ch and 0 <= j < cw and colls[i][j]:
                 self.x = tmp_x
         elif self.d == 2:
             tmp_y = self.y + 0.2 * dt
-            if colls[int((tmp_y + 332) // 64)][int((self.x + 432) // 64)]:
+            i = int((tmp_y + 332) // 64)
+            j = int((self.x + 432) // 64)
+            if 0 <= i < ch and 0 <= j < cw and colls[i][j]:
                 self.y = tmp_y
         elif self.d == 3:
             tmp_y = self.y - 0.2 * dt
-            if colls[int((tmp_y + 332) // 64)][int((self.x + 432) // 64)]:
+            i = int((tmp_y + 332) // 64)
+            j = int((self.x + 432) // 64)
+            if 0 <= i < ch and 0 <= j < cw and colls[i][j]:
                 self.y = tmp_y
 
 
