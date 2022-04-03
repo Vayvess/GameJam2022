@@ -15,8 +15,8 @@ with open(os.path.join("../ressources/arena.csv")) as f:
         colls.append([tile != "0" for tile in row])
 
 clk = pg.time.Clock()
-udp_sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
-tcp_sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 tcp_sock.bind(SRV_ADDR)
 tcp_sock.listen()
 gameobjects = []
@@ -220,8 +220,8 @@ def gameloop():
     gameobjects.append(Bot())
     while True:
         if gameobjects:
-            lock.acquire()
             dt = clk.tick(60)
+            lock.acquire()
             w = 0
             game_state = {}
             for go in gameobjects:
@@ -252,7 +252,10 @@ def tcp_handler():
                     sess = key.data
                     data = sess.conn.recv(MTU)
                     if data:
-                        sess.handle_req(json.loads(data.decode("utf-8")))
+                        try:
+                            sess.handle_req(json.loads(data.decode("utf-8")))
+                        except json.decoder.JSONDecodeError as err:
+                            print(err)
                     else:
                         print("bye !")
                         lock.acquire()

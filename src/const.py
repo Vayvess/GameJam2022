@@ -18,8 +18,8 @@ pg.init()
 FPS = 60
 MTU = 1300
 DIM = (W, H) = 800, 600
-SRV_PORT = 65004
-SRV_IP = "localhost"
+SRV_PORT = 65005
+SRV_IP = "192.168.142.208"
 SRV_ADDR = (SRV_IP, SRV_PORT)
 
 # COLORS

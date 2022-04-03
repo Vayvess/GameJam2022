@@ -5,13 +5,13 @@ import threading
 from const import *
 
 game_id = 0
-tcp_sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 try:
     tcp_sock.connect(SRV_ADDR)
 except ConnectionRefusedError as err:
     print(err)
     sys.exit()
-udp_sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 udp_sock.bind(tcp_sock.getsockname())
 
 
