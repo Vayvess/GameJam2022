@@ -10,8 +10,8 @@ from const import *
 
 colls = []
 with open(os.path.join("../ressources/arena.csv")) as f:
-    data = csv.reader(f, delimiter=',')
-    for row in data:
+    fbuff = csv.reader(f, delimiter=',')
+    for row in fbuff:
         colls.append([tile != "0" for tile in row])
 
 clk = pg.time.Clock()
@@ -208,7 +208,7 @@ def gameloop():
     def broadcast_state(gs):
         data = json.dumps(gs).encode("utf-8")
         if len(data) > MTU:
-            print("wtf")
+            return
         for obj in gameobjects:
             if obj.type == UDP_PLAYER:
                 udp_sock.sendto(data, obj.addr)
@@ -247,17 +247,17 @@ def tcp_handler():
                     conn, addr = tcp_sock.accept()
                     conn.setblocking(False)
                     sel.register(conn, selectors.EVENT_READ, Session(conn, addr))
-                    print("new connection")
+                    print("anon joined the server !")
                 else:
                     sess = key.data
                     data = sess.conn.recv(MTU)
                     if data:
                         try:
                             sess.handle_req(json.loads(data.decode("utf-8")))
-                        except json.decoder.JSONDecodeError as err:
-                            print(err)
+                        except json.decoder.JSONDecodeError:
+                            pass
                     else:
-                        print("bye !")
+                        print(f"{sess.usern} disconnected !")
                         lock.acquire()
                         if sess in gameobjects:
                             gameobjects.remove(sess)

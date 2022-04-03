@@ -1,7 +1,6 @@
 import sys
 import time
 import socket
-import threading
 from const import *
 
 game_id = 0
@@ -34,6 +33,16 @@ window = pg.display.set_mode(DIM)
 bg = pg.image.load("../ressources/arena.png").convert()
 spell_lava = pg.image.load("../ressources/spell_lava.png").convert()
 bot = pg.image.load("../ressources/bot.png")
+
+uu = pg.image.load("../ressources/uu.png")
+ud = pg.image.load("../ressources/ud.png")
+ur = pg.image.load("../ressources/ur.png")
+ul = pg.image.load("../ressources/ul.png")
+
+tu = pg.image.load("../ressources/tu.png")
+td = pg.image.load("../ressources/td.png")
+tr = pg.image.load("../ressources/tr.png")
+tl = pg.image.load("../ressources/tl.png")
 
 
 class Text:
@@ -212,23 +221,29 @@ class Arena(Scene):
             if v[UDP_TYPE] == UDP_PLAYER:
                 if int(k) == game_id:
                     self.pos = v[UDP_POS]
-                    pg.draw.circle(window, BLUE, (400, 300), 16)
                     if v[UDP_DIR] == TCP_DOWN:
-                        pg.draw.line(window, WHITE, (400, 300), (400, 316), 4)
+                        window.blit(ud, (368, 268))
                     elif v[UDP_DIR] == TCP_UP:
-                        pg.draw.line(window, WHITE, (400, 300), (400, 284), 4)
+                        window.blit(uu, (368, 268))
                     elif v[UDP_DIR] == TCP_LEFT:
-                        pg.draw.line(window, WHITE, (400, 300), (384, 300), 4)
+                        window.blit(ul, (368, 268))
                     elif v[UDP_DIR] == TCP_RIGHT:
-                        pg.draw.line(window, WHITE, (400, 300), (416, 300), 4)
+                        window.blit(ur, (368, 268))
 
-                    window.blit(font.render(v[UDP_USERN], True, WHITE), (400 - len(v[UDP_USERN]) * 6, 260))
+                    window.blit(font.render(v[UDP_USERN], True, WHITE), (408 - len(v[UDP_USERN]) * 6, 250))
                     pg.draw.rect(window, BLUE, (750, 0, 25, v[UDP_MANA] * 6))
                     pg.draw.rect(window, GREEN, (775, 0, 25, v[UDP_LP] * 6))
                 else:
                     pos = v[UDP_POS]
                     pos = (pos[0] - self.pos[0] + 400, pos[1] - self.pos[1] + 300)
-                    pg.draw.circle(window, RED, pos, 16)
+                    if v[UDP_DIR] == TCP_DOWN:
+                        window.blit(td, pos)
+                    elif v[UDP_DIR] == TCP_UP:
+                        window.blit(tu, pos)
+                    elif v[UDP_DIR] == TCP_LEFT:
+                        window.blit(tl, pos)
+                    elif v[UDP_DIR] == TCP_RIGHT:
+                        window.blit(tr, pos)
                     pos = (pos[0] - len(v[UDP_USERN]) * 6, pos[1] - 40)
                     window.blit(font.render(v[UDP_USERN], True, WHITE), pos)
             elif v[UDP_TYPE] == UDP_LAVA:
