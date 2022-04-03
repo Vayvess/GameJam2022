@@ -1,10 +1,8 @@
 import sys
-import threading
 import time
 import socket
-import pygame as pg
+import threading
 from const import *
-from proto import *
 
 game_id = 0
 tcp_sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
@@ -32,6 +30,7 @@ clock = pg.time.Clock()
 font = pg.font.Font(None, 32)
 pg.display.set_caption("Louvain-li-Nux 2022")
 window = pg.display.set_mode(DIM)
+bg = pg.image.load("../ressources/arena.png").convert()
 
 
 class Text:
@@ -182,6 +181,7 @@ class Arena(Scene):
         self.uptimes = {}
         self.gameobjects = {}
         self.lock = threading.Lock()
+        self.pos = (400, 300)
 
         def sub_routine():
             try:
@@ -206,15 +206,21 @@ class Arena(Scene):
 
     def handle_render(self):
         window.fill(BLACK)
-        # TODO: LOCAL BACKGROUND
+        window.blit(bg, (-self.pos[0], -self.pos[1]))
         # TODO: ANIMATE REMOTE OBJ
         self.lock.acquire()
         for k, v in self.gameobjects.items():
             if v[UDP_TYPE] == UDP_PLAYER:
-                pg.draw.circle(window, BLUE if int(k) == game_id else RED, v[UDP_POS], 16)
-                pos = v[UDP_POS]
-                pos = (pos[0] - len(v[UDP_USERN]) * 6, pos[1] - 40)
-                window.blit(font.render(v[UDP_USERN], True, GREY), pos)
+                if int(k) == game_id:
+                    self.pos = v[UDP_POS]
+                    pg.draw.circle(window, BLUE, (400, 300), 16)
+                    window.blit(font.render(v[UDP_USERN], True, WHITE), (400 - len(v[UDP_USERN]) * 6, 260))
+                else:
+                    pos = v[UDP_POS]
+                    pos = (pos[0] - self.pos[0] + 400, pos[1] - self.pos[1] + 300)
+                    pg.draw.circle(window, RED, pos, 16)
+                    pos = (pos[0] - len(v[UDP_USERN]) * 6, pos[1] - 40)
+                    window.blit(font.render(v[UDP_USERN], True, WHITE), pos)
         self.lock.release()
 
         for r in self.renderable:

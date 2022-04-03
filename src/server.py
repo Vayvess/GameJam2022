@@ -2,10 +2,8 @@ import time
 import socket
 import selectors
 import threading
-import pygame as pg
-from proto import *
+from const import *
 
-pg.init()
 clk = pg.time.Clock()
 udp_sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
 tcp_sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)

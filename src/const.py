@@ -1,4 +1,20 @@
 import json
+import pygame as pg
+
+
+def rcv_tcp_msg(sock):
+    try:
+        data = sock.recv(MTU)
+        return json.loads(data.decode("utf-8"))
+    except ValueError:
+        return None
+
+
+def send_tcp_msg(sock, data):
+    sock.sendall(json.dumps(data).encode("utf-8"))
+
+
+pg.init()
 FPS = 60
 MTU = 1300
 DIM = (W, H) = 800, 600
@@ -7,6 +23,7 @@ SRV_IP = "localhost"
 SRV_ADDR = (SRV_IP, SRV_PORT)
 
 # COLORS
+WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
