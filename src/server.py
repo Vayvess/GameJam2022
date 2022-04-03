@@ -1,8 +1,18 @@
+import os
+import csv
 import time
 import socket
 import selectors
 import threading
+from random import randint
 from const import *
+
+
+colls = []
+with open(os.path.join("../ressources/arena.csv")) as f:
+    data = csv.reader(f, delimiter=',')
+    for row in data:
+        colls.append([tile != "0" for tile in row])
 
 clk = pg.time.Clock()
 udp_sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
@@ -18,12 +28,93 @@ sel.register(tcp_sock, selectors.EVENT_READ, None)
 game_id = 0
 
 
+class Lava:
+    def __init__(self, x, y, d):
+        global game_id
+        self.id = game_id
+        game_id += 1
+
+        self.timer = 750
+        self.type = UDP_LAVA
+        if d == TCP_DOWN:
+            self.pos = (x - 96, y + 96)
+        elif d == TCP_UP:
+            self.pos = (x - 96, y - 256)
+        elif d == TCP_RIGHT:
+            self.pos = (x + 64, y - 96)
+        elif d == TCP_LEFT:
+            self.pos = (x - 256, y - 96)
+
+    def get_state(self):
+        return {
+            UDP_TYPE: UDP_LAVA,
+            UDP_POS: self.pos
+        }
+
+    def update(self, dt):
+        self.timer -= dt
+        if self.timer < 0:
+            gameobjects.remove(self)
+
+
+class Bot:
+    def __init__(self):
+        global game_id
+        self.id = game_id
+        game_id += 1
+        self.type = UDP_BOT
+
+        self.lp = 100
+        self.x = 400
+        self.y = 300
+        self.d = 0
+
+    def reset(self):
+        self.lp = 100
+        self.x = 400
+        self.y = 300
+
+    def get_state(self):
+        return {
+            UDP_TYPE: UDP_BOT,
+            UDP_POS: (self.x, self.y)
+        }
+
+    def update(self, dt):
+        for go in gameobjects:
+            if go.type == UDP_LAVA:
+                if pg.rect.Rect(go.pos[0], go.pos[1], 192, 192).collidepoint(self.x, self.y):
+                    self.lp -= 1
+                    if self.lp == 0:
+                        self.reset()
+
+        if randint(0, 99) < 5:
+            self.d = randint(0, 3)
+        if self.d == 0:
+            tmp_x = self.x + 0.2 * dt
+            if colls[int((self.y + 332) // 64)][int((tmp_x + 432) // 64)]:
+                self.x = tmp_x
+        elif self.d == 1:
+            tmp_x = self.x - 0.2 * dt
+            if colls[int((self.y + 332)) // 64][int((tmp_x + 432) // 64)]:
+                self.x = tmp_x
+        elif self.d == 2:
+            tmp_y = self.y + 0.2 * dt
+            if colls[int((tmp_y + 332) // 64)][int((self.x + 432) // 64)]:
+                self.y = tmp_y
+        elif self.d == 3:
+            tmp_y = self.y - 0.2 * dt
+            if colls[int((tmp_y + 332) // 64)][int((self.x + 432) // 64)]:
+                self.y = tmp_y
+
+
 class Session:
     def __init__(self, conn, addr):
         global game_id
         self.id = game_id
-        self.type = UDP_PLAYER
         game_id += 1
+
+        self.type = UDP_PLAYER
         self.conn = conn
         self.addr = addr
         self.inputs = {
@@ -31,10 +122,12 @@ class Session:
             TCP_DOWN: False,
             TCP_LEFT: False,
             TCP_RIGHT: False,
+            TCP_LAVA: False
         }
 
         self.lp = 100
         self.mp = 100
+        self.dir = TCP_DOWN
         self.x = 400
         self.y = 300
         self.usern = "anon"
@@ -61,23 +154,55 @@ class Session:
         return {
             UDP_TYPE: UDP_PLAYER,
             UDP_POS: (self.x, self.y),
-            UDP_USERN: self.usern
+            UDP_USERN: self.usern,
+            UDP_MANA: int(self.mp),
+            UDP_LP: self.lp,
+            UDP_DIR: self.dir
         }
 
     def update(self, dt):
+        for go in gameobjects:
+            if go.type == UDP_LAVA:
+                if pg.rect.Rect(go.pos[0], go.pos[1], 192, 192).collidepoint(self.x, self.y):
+                    self.lp -= 1
+                    if self.lp == 0:
+                        self.reset()
+
         if self.inputs[TCP_RIGHT]:
-            self.x = self.x + 0.2 * dt
+            tmp_x = self.x + 0.2 * dt
+            if colls[int((self.y + 300) // 64)][int((tmp_x + 400) // 64)]:
+                self.x = tmp_x
+            self.dir = TCP_RIGHT
         if self.inputs[TCP_LEFT]:
-            self.x = self.x - 0.2 * dt
+            tmp_x = self.x - 0.2 * dt
+            if colls[int((self.y + 300) // 64)][int((tmp_x + 400) // 64)]:
+                self.x = tmp_x
+            self.dir = TCP_LEFT
         if self.inputs[TCP_UP]:
-            self.y = self.y - 0.2 * dt
+            tmp_y = self.y - 0.2 * dt
+            if colls[int((tmp_y + 300) // 64)][int((self.x + 400) // 64)]:
+                self.y = tmp_y
+            self.dir = TCP_UP
         if self.inputs[TCP_DOWN]:
-            self.y = self.y + 0.2 * dt
+            tmp_y = self.y + 0.2 * dt
+            if colls[int((tmp_y + 300) // 64)][int((self.x + 400) // 64)]:
+                self.y = tmp_y
+            self.dir = TCP_DOWN
+
+        if self.inputs[TCP_LAVA]:
+            self.inputs[TCP_LAVA] = False
+            if self.mp > 50:
+                gameobjects.append(Lava(self.x, self.y, self.dir))
+                self.mp -= 50
+        if self.mp < 100:
+            self.mp += 0.4
 
 
 def gameloop():
     weights = {
-        UDP_PLAYER: 60
+        UDP_PLAYER: 75,
+        UDP_LAVA: 25,
+        UDP_BOT: 25
     }
 
     def broadcast_state(gs):
@@ -88,6 +213,11 @@ def gameloop():
             if obj.type == UDP_PLAYER:
                 udp_sock.sendto(data, obj.addr)
 
+    gameobjects.append(Bot())
+    gameobjects.append(Bot())
+    gameobjects.append(Bot())
+    gameobjects.append(Bot())
+    gameobjects.append(Bot())
     while True:
         if gameobjects:
             lock.acquire()

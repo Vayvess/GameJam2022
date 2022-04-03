@@ -31,6 +31,8 @@ font = pg.font.Font(None, 32)
 pg.display.set_caption("Louvain-li-Nux 2022")
 window = pg.display.set_mode(DIM)
 bg = pg.image.load("../ressources/arena.png").convert()
+spell_lava = pg.image.load("../ressources/spell_lava.png").convert()
+bot = pg.image.load("../ressources/bot.png")
 
 
 class Text:
@@ -194,7 +196,7 @@ class Arena(Scene):
                         self.gameobjects[k] = data[k]
                     to_remove = []
                     for k in self.uptimes:
-                        if now - self.uptimes[k] > 1.5:
+                        if now - self.uptimes[k] > 0.75:
                             to_remove.append(k)
                     for k in to_remove:
                         self.uptimes.pop(k)
@@ -214,13 +216,33 @@ class Arena(Scene):
                 if int(k) == game_id:
                     self.pos = v[UDP_POS]
                     pg.draw.circle(window, BLUE, (400, 300), 16)
+                    if v[UDP_DIR] == TCP_DOWN:
+                        pg.draw.line(window, WHITE, (400, 300), (400, 316), 4)
+                    elif v[UDP_DIR] == TCP_UP:
+                        pg.draw.line(window, WHITE, (400, 300), (400, 284), 4)
+                    elif v[UDP_DIR] == TCP_LEFT:
+                        pg.draw.line(window, WHITE, (400, 300), (384, 300), 4)
+                    elif v[UDP_DIR] == TCP_RIGHT:
+                        pg.draw.line(window, WHITE, (400, 300), (416, 300), 4)
+
                     window.blit(font.render(v[UDP_USERN], True, WHITE), (400 - len(v[UDP_USERN]) * 6, 260))
+                    pg.draw.rect(window, BLUE, (750, 0, 25, v[UDP_MANA] * 6))
+                    pg.draw.rect(window, GREEN, (775, 0, 25, v[UDP_LP] * 6))
                 else:
                     pos = v[UDP_POS]
                     pos = (pos[0] - self.pos[0] + 400, pos[1] - self.pos[1] + 300)
                     pg.draw.circle(window, RED, pos, 16)
                     pos = (pos[0] - len(v[UDP_USERN]) * 6, pos[1] - 40)
                     window.blit(font.render(v[UDP_USERN], True, WHITE), pos)
+            elif v[UDP_TYPE] == UDP_LAVA:
+                pos = v[UDP_POS]
+                pos = (pos[0] - self.pos[0] + 400, pos[1] - self.pos[1] + 300)
+                window.blit(spell_lava, pos)
+            elif v[UDP_TYPE] == UDP_BOT:
+                pos = v[UDP_POS]
+                pos = (pos[0] - self.pos[0] + 400, pos[1] - self.pos[1] + 300)
+                window.blit(bot, pos)
+
         self.lock.release()
 
         for r in self.renderable:
@@ -246,6 +268,7 @@ class Arena(Scene):
                 TCP_DOWN: inputs[pg.K_s],
                 TCP_LEFT: inputs[pg.K_q],
                 TCP_RIGHT: inputs[pg.K_d],
+                TCP_LAVA: inputs[pg.K_e]
             })
         self.handle_render()
 
